@@ -121,22 +121,40 @@ docker-compose up --build
 ## 🗄️ Project Structure
 
 ```
-file-hub/
+abnormal-file-hub/
 ├── backend/                # Django backend
 │   ├── files/             # Main application
 │   │   ├── models.py      # Data models
 │   │   ├── views.py       # API views
 │   │   ├── urls.py        # URL routing
-│   │   └── serializers.py # Data serialization
+│   │   ├── serializers.py # Data serialization
+│   │   ├── exceptions.py  # Custom exceptions
+│   │   ├── services/      # Business logic layer
+│   │   │   ├── file_service.py   # File management with deduplication
+│   │   │   └── search_service.py # File search functionality
+│   │   └── tests/         # Comprehensive test suite
+│   │       ├── test_models.py
+│   │       ├── test_serializers.py
+│   │       ├── test_api_views.py
+│   │       ├── test_file_service.py
+│   │       ├── test_search_service.py
+│   │       ├── test_exceptions.py
+│   │       └── conftest.py        # Test fixtures and setup
 │   ├── core/              # Project settings
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
 │   └── requirements.txt   # Python dependencies
 ├── frontend/              # React frontend
 │   ├── src/
 │   │   ├── components/    # React components
 │   │   ├── services/      # API services
-│   │   └── types/         # TypeScript types
-│   └── package.json      # Node.js dependencies
-└── docker-compose.yml    # Docker composition
+│   │   ├── types/         # TypeScript types
+│   │   └── utils/         # Helper utilities
+│   ├── public/            # Static assets
+│   └── package.json       # Node.js dependencies
+├── docker-compose.yml     # Docker composition
+└── prometheus.yml        # Monitoring configuration
 ```
 
 ## 🔧 Development Features

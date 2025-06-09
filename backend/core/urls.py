@@ -57,8 +57,6 @@ urlpatterns = [
             else RedirectView.as_view(url="/", permanent=False)
         ),
     ),
-    # (Optional) Admin
-    path("admin/", admin.site.urls),
 ]
 
 # Serve media in debug; in production, let your web server handle it

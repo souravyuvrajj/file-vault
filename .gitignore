@@ -6,7 +6,8 @@ __pycache__/
 *.so
 .Python
 *.sqlite3
-/backend/venv/
+/backend/.venv/
+/backend/data/
 /backend/env/
 /backend/media/
 /backend/staticfiles/
