@@ -1,0 +1,109 @@
+name: Django CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Copy .env file
+        run: |
+          cp backend/.env.example backend/.env
+          # Override some values for testing
+          sed -i 's/your-secret-key-here/test-secret-key/' backend/.env
+          sed -i 's/DB_NAME=/DB_NAME=backend\/test_db.sqlite3/' backend/.env
+          echo "DJANGO_DEBUG=True" >> backend/.env
+          echo "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1" >> backend/.env
+
+      - name: Build Docker image
+        run: |
+          cd backend
+          docker build -t test-image .
+          docker run --rm test-image python manage.py check
+          
+      - name: Run tests and check coverage
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          cd backend
+          # Create required directories
+          mkdir -p logs media staticfiles data
+          # Set proper permissions
+          chmod -R 777 logs media staticfiles data
+          # Run tests and check for 85% coverage
+          python -m pytest --cov=. --cov-report=term-missing --cov-fail-under=85
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/backend:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create .env file for deployment
+        run: |
+          cp backend/.env.example backend/.env
+
+      - name: Install Docker Compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      - name: Deploy with Docker Compose
+        run: docker-compose -f docker-compose.yml --env-file backend/.env up -d
